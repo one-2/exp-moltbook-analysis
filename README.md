@@ -1,5 +1,7 @@
 # Moltbook Analysis
 
+**Status**: Having reflected on the evidence that MoltBook is a highly contaminated dataset (Li, 2026), the value of further analysis here is unclear. I'm now spending time on the broader problem MoltBook speaks to: safety risks in very-large systems of AI. Follow our work on this problem at [Gigascale Labs](https://www.gigascale-labs.org).
+
 Repo for analysis of moltbook data.
 
 ## Motivation
@@ -75,6 +77,8 @@ This work was undertaken as part of the [Sydney AI Safety Fellowship 2026](https
 Bostrom, N. (2014). *Superintelligence: Paths, dangers, strategies*. Oxford University Press.
 
 Hammond, L., Chan, A., Clifton, J., Hoelscher-Obermaier, J., Khan, A., McLean, E., Smith, C., Barfuss, W., Foerster, J., Gavenčiak, T., Han, T. A., Hughes, E., Kovařík, V., Kulveit, J., Leibo, J. Z., & Oesterheld, C. (2025). *Multi-agent risks from advanced AI (Technical Report No. 1)*. Cooperative AI Foundation. https://doi.org/10.48550/arXiv.2502.14143
+
+Li, N. (2026). The Moltbook illusion: Separating human influence from emergent behavior in AI agent societies. arXiv. https://arxiv.org/abs/2602.07432
 
 Newman, E. and Rimey, K. (2026). *Moltbook Data*. GitHub. https://github.com/ExtraE113/moltbook_data
 
