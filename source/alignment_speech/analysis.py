@@ -7,7 +7,7 @@ produces it.
 
 These functions describe the labels they are given. They describe the
 platform only when the labels are valid. **Measured:** the probe reaches
-median F1 0.27 against reference labels (range 0.10 to 0.33, n=10
+median F1 0.27 against opus5 reference labels (range 0.10 to 0.33, n=10
 dispositions, 1,015 posts). `source/alignment_relevant_speech.ipynb` gives every number.
 """
 
@@ -166,7 +166,7 @@ def attenuation_report(frame: pd.DataFrame, pairs=NEAR_SYNONYM_PAIRS) -> pd.Data
     documents.
 
     **Measured:** the coordination pair reaches ratio 0.45 under probe labels
-    and 1.00 under reference labels (n=1,015).
+    and 1.00 under opus5 reference labels (n=1,015).
     """
     records = []
     for a, b in pairs:

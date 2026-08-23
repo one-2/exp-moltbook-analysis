@@ -20,10 +20,22 @@ stored result file.
 | `source/alignment_relevant_speech.ipynb` | method, label provenance, and results |
 | `february-analysis/` | the February 2026 exploratory analysis and its README |
 | `data/data_2026_01_31_1847_aest/` | the scrape |
-| `data/gold/` | reference labels and the rubric given to the labellers |
+| `data/opus5_reference/` | opus5 reference labels and the rubric given to the opus5 labellers |
 | `cache/trait_scores/` | `gpt-4.1-nano` judgments from the January 2026 run |
 | `results/` | CSV output of the command line interface; every file is regenerable |
 | `tests/` | 15 tests over the cache keys and the statistics |
+
+## Naming
+
+`opus5_reference` names the labels 24 `claude-opus-5` subagents produced against
+`data/opus5_reference/RUBRIC.md`. The name states which model produced them.
+
+**Not measured:** the model that serves each subagent turn. The session reports
+`claude-opus-5` as the last served model. An individual turn may use a different
+model if the runtime falls back. The name asserts the session model, not the
+per-turn model.
+
+**Not collected:** human labels. These are not a human gold standard.
 
 ## Data
 
@@ -36,7 +48,7 @@ stored result file.
 | Cache entries | 51,430 |
 | Posts with cache entries | 1,041 |
 | Posts scored against all 48 dispositions | 1,015 |
-| Posts with reference labels | 1,015 |
+| Posts with opus5 reference labels | 1,015 |
 
 **Measured:** the cache holds 54 distinct trait strings. 48 are in the current
 taxonomy. 6 are traits the taxonomy later excluded, covering 1,462 entries. Of
@@ -62,10 +74,10 @@ jupyter nbconvert --to notebook --execute --inplace \
 
 # Command line interface. These two rebuild every file in results/.
 PYTHONPATH=source python3 -m alignment_speech --scored-only --out results analyse
-PYTHONPATH=source python3 -m alignment_speech --scored-only --out results gold
+PYTHONPATH=source python3 -m alignment_speech --scored-only --out results opus5-reference
 ```
 
-`analyse` writes 7 files. `gold` writes 6. **Measured:** deleting `results/` and
+`analyse` writes 7 files. `opus5-reference` writes 6. **Measured:** deleting `results/` and
 running both rebuilds all 13 files. Every value matches the committed copy to
 within 5.6e-15, and every text column is identical.
 
@@ -106,7 +118,7 @@ Write every document in this repository in Simplified Technical English.
 | Unknowns | say "I do not know", then name the test that would settle it |
 | First sentence | answer the question |
 
-This applies to every README, the notebook prose, `data/gold/RUBRIC.md`, every
+This applies to every README, the notebook prose, `data/opus5_reference/RUBRIC.md`, every
 docstring and comment, commit subjects, and pull request bodies.
 
 ## Licence

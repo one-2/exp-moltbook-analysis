@@ -1,7 +1,7 @@
-"""The reference set: labels for 10 dispositions on 1,015 posts.
+"""The opus5 reference set: labels for 10 dispositions on 1,015 posts.
 
 24 subagents label the posts against 10 of the 48 dispositions. Each subagent
-labels one batch and works from `data/gold/RUBRIC.md`. The subagents do not
+labels one batch and works from `data/opus5_reference/RUBRIC.md`. The subagents do not
 see the `gpt-4.1-nano` labels. Section 2 of
 `source/alignment_relevant_speech.ipynb` records the harness, the
 model, the batching, and the checks.
@@ -21,7 +21,7 @@ measures the probe as it runs. It does not measure `gpt-4.1-nano` alone.
 **I do not know** whether the probe fails because of the model or because of
 the prompt. The test that settles it: give the probe the rubric definitions,
 re-score the 1,015 posts, then re-run `validate-score` against the same
-reference labels.
+opus5 reference labels.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ import pandas as pd
 
 from . import analysis as an
 
-GOLD_TRAITS: dict[str, str] = {
+OPUS5_REFERENCE_TRAITS: dict[str, str] = {
     "t01": "desire for self improvement",
     "t02": "desire for more capabilities",
     "t03": "Willingness to coordinate with other AIs",
@@ -52,36 +52,36 @@ HUMOUR = "h"
 
 # Pairs the rubric defines as one disposition in different words. The
 # self-improvement / more-capabilities pair is not one of them.
-# **Measured:** those two correlate at -0.004 under reference labels
+# **Measured:** those two correlate at -0.004 under opus5 reference labels
 # (n=1,015), so the taxonomy records them as two constructs.
-GOLD_PAIRS: list[tuple[str, str]] = [("t03", "t04"), ("t05", "t06")]
+OPUS5_REFERENCE_PAIRS: list[tuple[str, str]] = [("t03", "t04"), ("t05", "t06")]
 
 MIN_POSITIVES_FOR_PAIR = 25
 
 
-def load_gold(labels_dir: str) -> pd.DataFrame:
+def load_opus5_reference(labels_dir: str) -> pd.DataFrame:
     """Read the 24 per-batch label files into one wide frame, one row per post."""
     rows = []
     for path in sorted(glob.glob(os.path.join(labels_dir, "batch_*.json"))):
         batch = os.path.basename(path)
         for row in json.loads(open(path).read()):
             record = {"doc_id": row["id"], "batch": batch}
-            for code in list(GOLD_TRAITS) + [HUMOUR]:
+            for code in list(OPUS5_REFERENCE_TRAITS) + [HUMOUR]:
                 record[code] = int(row[code])
             rows.append(record)
     return pd.DataFrame(rows)
 
 
-def to_long(gold: pd.DataFrame) -> pd.DataFrame:
-    """Long form: doc_id, trait, human_label. `validation.evaluate_against_gold` reads it."""
+def to_long(opus5_reference: pd.DataFrame) -> pd.DataFrame:
+    """Long form: doc_id, trait, human_label. `validation.evaluate_against_opus5_reference` reads it."""
     return pd.DataFrame([
         {"doc_id": row["doc_id"], "trait": trait, "human_label": int(row[code])}
-        for _, row in gold.iterrows()
-        for code, trait in GOLD_TRAITS.items()
+        for _, row in opus5_reference.iterrows()
+        for code, trait in OPUS5_REFERENCE_TRAITS.items()
     ])
 
 
-def prevalence_comparison(gold: pd.DataFrame, frame: pd.DataFrame) -> pd.DataFrame:
+def prevalence_comparison(opus5_reference: pd.DataFrame, frame: pd.DataFrame) -> pd.DataFrame:
     """Reference against probe prevalence, with 95% Wilson intervals on both.
 
     `ci_disjoint` marks the traits whose intervals do not overlap.
@@ -90,9 +90,9 @@ def prevalence_comparison(gold: pd.DataFrame, frame: pd.DataFrame) -> pd.DataFra
     over-reports 7 dispositions and under-reports 3.
     """
     records = []
-    for code, trait in GOLD_TRAITS.items():
+    for code, trait in OPUS5_REFERENCE_TRAITS.items():
         merged = frame[["doc_id", trait]].merge(
-            gold[["doc_id", code]], on="doc_id", how="inner").dropna()
+            opus5_reference[["doc_id", code]], on="doc_id", how="inner").dropna()
         n = len(merged)
         if not n:
             continue
@@ -101,7 +101,7 @@ def prevalence_comparison(gold: pd.DataFrame, frame: pd.DataFrame) -> pd.DataFra
         j_lo, j_hi = an.wilson_interval(int(merged[trait].sum()), n)
         records.append({
             "trait": trait, "n": n,
-            "gold": g, "gold_lo": g_lo, "gold_hi": g_hi,
+            "opus5_reference": g, "opus5_reference_lo": g_lo, "opus5_reference_hi": g_hi,
             "judge": j, "judge_lo": j_lo, "judge_hi": j_hi,
             "ratio": (j / g) if g else float("inf"),
             "ci_disjoint": (g_lo > j_hi) or (j_lo > g_hi),
@@ -109,8 +109,8 @@ def prevalence_comparison(gold: pd.DataFrame, frame: pd.DataFrame) -> pd.DataFra
     return pd.DataFrame(records).sort_values("ratio", ascending=False).reset_index(drop=True)
 
 
-def pair_agreement(gold: pd.DataFrame, frame: pd.DataFrame) -> pd.DataFrame:
-    """Synonym-pair agreement under reference labels and under the probe.
+def pair_agreement(opus5_reference: pd.DataFrame, frame: pd.DataFrame) -> pd.DataFrame:
+    """Synonym-pair agreement under opus5 reference labels and under the probe.
 
     `phi_ratio` 1.0 means two labels for one disposition agree as strongly as
     their base rates permit. The reference ratio against the probe ratio
@@ -118,13 +118,13 @@ def pair_agreement(gold: pd.DataFrame, frame: pd.DataFrame) -> pd.DataFrame:
     A low probe ratio beside a high reference ratio puts the fault in the
     probe.
 
-    **Measured:** the coordination pair reaches 1.00 under reference labels
+    **Measured:** the coordination pair reaches 1.00 under opus5 reference labels
     and 0.45 under probe labels (n=1,015).
     """
     records = []
-    for a, b in GOLD_PAIRS:
-        ta, tb = GOLD_TRAITS[a], GOLD_TRAITS[b]
-        gsub = gold[[a, b]].dropna()
+    for a, b in OPUS5_REFERENCE_PAIRS:
+        ta, tb = OPUS5_REFERENCE_TRAITS[a], OPUS5_REFERENCE_TRAITS[b]
+        gsub = opus5_reference[[a, b]].dropna()
         jsub = frame[[ta, tb]].dropna()
         g_phi = gsub[a].astype(float).corr(gsub[b].astype(float))
         g_max = an.max_phi(gsub[a].mean(), gsub[b].mean())
@@ -133,8 +133,8 @@ def pair_agreement(gold: pd.DataFrame, frame: pd.DataFrame) -> pd.DataFrame:
         positives = int(min(gsub[a].sum(), gsub[b].sum()))
         records.append({
             "trait_a": ta, "trait_b": tb,
-            "gold_phi": g_phi, "gold_max_phi": g_max,
-            "gold_ratio": g_phi / g_max if g_max else float("nan"),
+            "opus5_reference_phi": g_phi, "opus5_reference_max_phi": g_max,
+            "opus5_reference_ratio": g_phi / g_max if g_max else float("nan"),
             "judge_phi": j_phi, "judge_max_phi": j_max,
             "judge_ratio": j_phi / j_max if j_max else float("nan"),
             "min_positives": positives,
@@ -145,7 +145,7 @@ def pair_agreement(gold: pd.DataFrame, frame: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(records)
 
 
-def humour_breakdown(gold: pd.DataFrame) -> pd.DataFrame:
+def humour_breakdown(opus5_reference: pd.DataFrame) -> pd.DataFrame:
     """Disposition rates in sincere posts against joking posts.
 
     A disposition that appears mainly in posts flagged as comedy is not
@@ -155,14 +155,14 @@ def humour_breakdown(gold: pd.DataFrame) -> pd.DataFrame:
     `desire for acquiring power` runs at 2.8% in sincere posts (n=938) and
     19.5% in joking posts (n=77).
     """
-    serious = gold[gold[HUMOUR] == 0]
-    joking = gold[gold[HUMOUR] == 1]
+    serious = opus5_reference[opus5_reference[HUMOUR] == 0]
+    joking = opus5_reference[opus5_reference[HUMOUR] == 1]
     records = []
-    for code, trait in GOLD_TRAITS.items():
+    for code, trait in OPUS5_REFERENCE_TRAITS.items():
         rate_serious = serious[code].mean() if len(serious) else float("nan")
         rate_joking = joking[code].mean() if len(joking) else float("nan")
         n_joking_positive = int(joking[code].sum()) if len(joking) else 0
-        n_total_positive = int(gold[code].sum())
+        n_total_positive = int(opus5_reference[code].sum())
         records.append({
             "trait": trait,
             "rate_serious": rate_serious,
@@ -175,7 +175,7 @@ def humour_breakdown(gold: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(records).sort_values("lift", ascending=False).reset_index(drop=True)
 
 
-def labeller_consistency(gold: pd.DataFrame) -> pd.DataFrame:
+def labeller_consistency(opus5_reference: pd.DataFrame) -> pd.DataFrame:
     """Observed against expected between-batch variance in each disposition rate.
 
     Each batch has a different labeller. Between-batch variance is therefore a
@@ -187,9 +187,9 @@ def labeller_consistency(gold: pd.DataFrame) -> pd.DataFrame:
     from 0.0% to 28.6%. At the tighter cut of 1.07 the count is 7 of 10.
     """
     records = []
-    for code, trait in GOLD_TRAITS.items():
-        per_batch = gold.groupby("batch")[code].agg(["mean", "size"])
-        base = gold[code].mean()
+    for code, trait in OPUS5_REFERENCE_TRAITS.items():
+        per_batch = opus5_reference.groupby("batch")[code].agg(["mean", "size"])
+        base = opus5_reference[code].mean()
         if base in (0.0, 1.0) or per_batch.empty:
             continue
         observed = per_batch["mean"].var(ddof=1)

@@ -3,14 +3,14 @@
     python -m alignment_speech score      --limit 1000
     python -m alignment_speech analyse    --limit 1000 --out results/
     python -m alignment_speech validate-sample --out results/annotation.csv
-    python -m alignment_speech validate-score --annotations results/gold_labels.csv
-    python -m alignment_speech gold       --out results/
+    python -m alignment_speech validate-score --annotations results/opus5_reference_labels.csv
+    python -m alignment_speech opus5_reference       --out results/
     python -m alignment_speech compare    --baseline data/reddit.jsonl
 
-`analyse`, `validate-sample`, `validate-score`, `gold` and `compare` run from
+`analyse`, `validate-sample`, `validate-score`, `opus5_reference` and `compare` run from
 cache and need no API key. `score` calls the API and needs OPENAI_API_KEY.
 
-`analyse` writes 7 files to `--out`. `gold` writes 6. Together they regenerate
+`analyse` writes 7 files to `--out`. `opus5_reference` writes 6. Together they regenerate
 every file in `results/`.
 """
 
@@ -160,12 +160,12 @@ def cmd_validate_score(args) -> int:
 
     from .traits import DEFAULT_TAXONOMY
     from . import analysis as an
-    from .validation import evaluate_against_gold
+    from .validation import evaluate_against_opus5_reference
 
     traits = list(DEFAULT_TAXONOMY)
-    gold = pd.read_csv(args.annotations)
-    gold = gold[gold["human_label"].notna()]
-    if gold.empty:
+    opus5_reference = pd.read_csv(args.annotations)
+    opus5_reference = opus5_reference[opus5_reference["human_label"].notna()]
+    if opus5_reference.empty:
         print("no completed annotations found in", args.annotations)
         return 1
 
@@ -177,7 +177,7 @@ def cmd_validate_score(args) -> int:
         if (hit := scorer.lookup(doc.id, trait, allow_legacy=not args.no_legacy)) is not None
     ]
     frame = an.build_frame(documents, judgments, traits)
-    report = evaluate_against_gold(gold, frame, traits)
+    report = evaluate_against_opus5_reference(opus5_reference, frame, traits)
     os.makedirs(args.out, exist_ok=True)
     path = os.path.join(args.out, "validation.csv")
     report.to_csv(path, index=False)
@@ -190,22 +190,22 @@ def cmd_validate_score(args) -> int:
     return 0
 
 
-def cmd_gold(args) -> int:
-    """Regenerate every reference-label output in `results/`.
+def cmd_opus5_reference(args) -> int:
+    """Regenerate every opus5-reference output in `results/`.
 
     `analyse` covers the probe outputs. This command covers the 6 that depend
-    on `data/gold/labels/`: the wide and long label frames, labeller
+    on `data/opus5_reference/labels/`: the wide and long label frames, labeller
     consistency, the humour breakdown, synonym-pair agreement, and the
     validation report.
 
     The validation report here carries 4 columns that `validate-score` does
-    not write: `gold`, `judge`, `ratio` and `ci_disjoint`. Those come from
-    `gold.prevalence_comparison`, which needs the wide reference frame.
+    not write: `opus5_reference`, `judge`, `ratio` and `ci_disjoint`. Those come from
+    `opus5_reference.prevalence_comparison`, which needs the wide reference frame.
     """
     from .traits import DEFAULT_TAXONOMY
     from . import analysis as an
-    from . import gold as gd
-    from .validation import evaluate_against_gold
+    from . import opus5_reference as o5ref
+    from .validation import evaluate_against_opus5_reference
 
     traits = list(DEFAULT_TAXONOMY)
     documents, scorer = _load(args, traits)
@@ -221,19 +221,19 @@ def cmd_gold(args) -> int:
         print("no fully scored documents: run `score` first")
         return 1
 
-    reference = gd.load_gold(args.labels)
-    long = gd.to_long(reference)
-    report = evaluate_against_gold(long, complete, list(gd.GOLD_TRAITS.values()))
-    comparison = gd.prevalence_comparison(reference, complete)
+    opus5_reference = o5ref.load_opus5_reference(args.labels)
+    long = o5ref.to_long(opus5_reference)
+    report = evaluate_against_opus5_reference(long, complete, list(o5ref.OPUS5_REFERENCE_TRAITS.values()))
+    comparison = o5ref.prevalence_comparison(opus5_reference, complete)
 
     tables = {
-        "gold_wide.csv": reference,
-        "gold_labels.csv": long,
-        "gold_consistency.csv": gd.labeller_consistency(reference),
-        "gold_humour.csv": gd.humour_breakdown(reference),
-        "gold_pairs.csv": gd.pair_agreement(reference, complete),
+        "opus5_reference_wide.csv": opus5_reference,
+        "opus5_reference_labels.csv": long,
+        "opus5_reference_consistency.csv": o5ref.labeller_consistency(opus5_reference),
+        "opus5_reference_humour.csv": o5ref.humour_breakdown(opus5_reference),
+        "opus5_reference_pairs.csv": o5ref.pair_agreement(opus5_reference, complete),
         "validation.csv": report.merge(
-            comparison[["trait", "gold", "judge", "ratio", "ci_disjoint"]], on="trait"
+            comparison[["trait", "opus5_reference", "judge", "ratio", "ci_disjoint"]], on="trait"
         ),
     }
 
@@ -242,8 +242,8 @@ def cmd_gold(args) -> int:
         path = os.path.join(args.out, name)
         table.to_csv(path, index=False)
         print(f"wrote {path}  ({len(table)} rows, {len(table.columns)} columns)")
-    print(f"\n{len(reference):,} reference posts over "
-          f"{reference['batch'].nunique()} batches")
+    print(f"\n{len(opus5_reference):,} opus5 reference posts over "
+          f"{opus5_reference['batch'].nunique()} batches")
     return 0
 
 
@@ -311,9 +311,9 @@ def build_parser() -> argparse.ArgumentParser:
     score_val.add_argument("--annotations", default="results/annotation.csv")
     score_val.set_defaults(func=cmd_validate_score)
 
-    gold_cmd = sub.add_parser("gold")
-    gold_cmd.add_argument("--labels", default="data/gold/labels")
-    gold_cmd.set_defaults(func=cmd_gold)
+    reference_cmd = sub.add_parser("opus5-reference")
+    reference_cmd.add_argument("--labels", default="data/opus5_reference/labels")
+    reference_cmd.set_defaults(func=cmd_opus5_reference)
 
     compare = sub.add_parser("compare")
     compare.add_argument("--baseline", required=True)

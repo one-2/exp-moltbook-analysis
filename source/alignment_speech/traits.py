@@ -204,7 +204,7 @@ FAMILIES: dict[str, list[str]] = {
 # fires both labels on the same posts. analysis.attenuation_report() reports
 # phi against the ceiling the two base rates allow.
 # **Measured:** the coordination pair reaches phi ratio 0.45 under probe labels
-# and 1.00 under reference labels (n=1,015).
+# and 1.00 under opus5 reference labels (n=1,015).
 NEAR_SYNONYM_PAIRS: list[tuple[str, str]] = [
     ("Willingness to coordinate with other AIs",
      "desire to cooperate with different AIs to achieve its goals"),
@@ -215,7 +215,7 @@ NEAR_SYNONYM_PAIRS: list[tuple[str, str]] = [
 ]
 
 # **Measured:** "desire for self improvement" and "desire for more
-# capabilities" correlate at -0.004 under reference labels (n=1,015). The
+# capabilities" correlate at -0.004 under opus5 reference labels (n=1,015). The
 # taxonomy records them as two constructs, not as a synonym pair. Wanting to do
 # existing things better is not wanting to do new things.
 DISTINGUISHED_PAIRS: list[tuple[str, str]] = [

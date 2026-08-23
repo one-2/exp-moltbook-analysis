@@ -1,10 +1,10 @@
-"""Validation of the probe against reference labels.
+"""Validation of the probe against opus5 reference labels.
 
 Published classifiers on this material report validation. Zhu et al.
 (2504.10286) benchmark Perspective API above F1 0.85 on three labelled
 datasets. 2602.02625 hand-checks 400 posts across 4 harm classes. Neither
 dataset covers a construct such as "desire to escape sandbox". This package
-therefore builds its own reference set. `data/gold/` holds it and section 2
+therefore builds its own opus5 reference set. `data/opus5_reference/` holds it and section 2
 of `source/alignment_relevant_speech.ipynb` records how it is produced.
 
 Workflow:
@@ -13,10 +13,10 @@ Workflow:
     2. Annotators fill in the exported CSV.
     3. `agreement` reports Cohen's kappa between annotators. Below kappa 0.6
        the label definition is the fault, not the probe.
-    4. `evaluate_against_gold` reports per-trait precision, recall and F1.
+    4. `evaluate_against_opus5_reference` reports per-trait precision, recall and F1.
     5. `select_thresholds` picks per-trait cut points on P(yes).
 
-**Not collected:** human labels. The reference labels in `data/gold/` are
+**Not collected:** human labels. The opus5 reference labels in `data/opus5_reference/` are
 model-produced.
 """
 
@@ -139,12 +139,12 @@ def agreement(annotations: pd.DataFrame, *, annotator_column: str = "annotator")
     return pd.DataFrame(records)
 
 
-def evaluate_against_gold(
-    gold: pd.DataFrame, frame: pd.DataFrame, traits=None
+def evaluate_against_opus5_reference(
+    opus5_reference: pd.DataFrame, frame: pd.DataFrame, traits=None
 ) -> pd.DataFrame:
-    """Per-trait precision, recall and F1 of the probe against reference labels.
+    """Per-trait precision, recall and F1 of the probe against opus5 reference labels.
 
-    `gold` needs the columns doc_id, trait, human_label.
+    `opus5_reference` needs the columns doc_id, trait, human_label.
 
     A trait below F1 0.6 carries no interpretive claim. Report it as measured
     and unreliable. Do not drop it: selective reporting on a validation pass
@@ -155,10 +155,10 @@ def evaluate_against_gold(
     """
     lookup = frame.set_index("doc_id")
     records = []
-    traits = traits if traits is not None else sorted(gold["trait"].unique())
+    traits = traits if traits is not None else sorted(opus5_reference["trait"].unique())
 
     for trait in traits:
-        subset = gold[gold["trait"] == trait]
+        subset = opus5_reference[opus5_reference["trait"] == trait]
         if subset.empty or trait not in lookup.columns:
             continue
         pairs = [
@@ -198,9 +198,9 @@ def evaluate_against_gold(
 
 
 def select_thresholds(
-    gold: pd.DataFrame, continuous: pd.DataFrame, *, grid: int = 101
+    opus5_reference: pd.DataFrame, continuous: pd.DataFrame, *, grid: int = 101
 ) -> pd.DataFrame:
-    """Pick a per-trait threshold on P(yes) that maximises F1 against reference labels.
+    """Pick a per-trait threshold on P(yes) that maximises F1 against opus5 reference labels.
 
     A single global cut point of 0.5 assumes one calibration for every
     disposition. **Not tested:** whether that assumption holds across
@@ -212,7 +212,7 @@ def select_thresholds(
     """
     lookup = continuous.set_index("doc_id")
     records = []
-    for trait, subset in gold.groupby("trait"):
+    for trait, subset in opus5_reference.groupby("trait"):
         if trait not in lookup.columns:
             continue
         pairs = [

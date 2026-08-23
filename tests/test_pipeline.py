@@ -22,7 +22,7 @@ from alignment_speech.scoring import (
     Judgment, LegacyCache, ScoreCache, probe_id, PROBE_TEMPLATE,
 )
 from alignment_speech.traits import DEFAULT_TAXONOMY, ALL_TRAITS
-from alignment_speech.validation import cohens_kappa, evaluate_against_gold, stratified_sample
+from alignment_speech.validation import cohens_kappa, evaluate_against_opus5_reference, stratified_sample
 
 
 def test_taxonomy_is_wellformed():
@@ -180,17 +180,17 @@ def test_export_is_blind_by_default():
         assert "judge_label" not in header  # a visible probe label anchors annotators
 
 
-def test_evaluate_against_gold_scores_perfect_and_inverted():
+def test_evaluate_against_opus5_reference_scores_perfect_and_inverted():
     traits = ["t"]
     frame = _frame([{"id": "d1", "t": 1}, {"id": "d2", "t": 0}], traits)
     perfect = pd.DataFrame(
         [{"doc_id": "d1", "trait": "t", "human_label": 1},
          {"doc_id": "d2", "trait": "t", "human_label": 0}]
     )
-    assert evaluate_against_gold(perfect, frame, traits).iloc[0]["f1"] == pytest.approx(1.0)
+    assert evaluate_against_opus5_reference(perfect, frame, traits).iloc[0]["f1"] == pytest.approx(1.0)
 
     inverted = pd.DataFrame(
         [{"doc_id": "d1", "trait": "t", "human_label": 0},
          {"doc_id": "d2", "trait": "t", "human_label": 1}]
     )
-    assert evaluate_against_gold(inverted, frame, traits).iloc[0]["tp"] == 0
+    assert evaluate_against_opus5_reference(inverted, frame, traits).iloc[0]["tp"] == 0
