@@ -1,0 +1,14 @@
+# Analysis (no API key needed)
+pandas>=2.0
+numpy>=1.24
+scipy>=1.10
+
+# Scoring new documents
+openai>=1.40
+
+# Notebooks / plots
+matplotlib>=3.7
+seaborn>=0.12
+
+# Tests
+pytest>=7.4
