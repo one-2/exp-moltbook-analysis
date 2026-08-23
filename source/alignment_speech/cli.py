@@ -4,10 +4,14 @@
     python -m alignment_speech analyse    --limit 1000 --out results/
     python -m alignment_speech validate-sample --out results/annotation.csv
     python -m alignment_speech validate-score --annotations results/gold_labels.csv
+    python -m alignment_speech gold       --out results/
     python -m alignment_speech compare    --baseline data/reddit.jsonl
 
-`analyse`, `validate-sample`, `validate-score` and `compare` run from cache
-and need no API key. `score` calls the API and needs OPENAI_API_KEY.
+`analyse`, `validate-sample`, `validate-score`, `gold` and `compare` run from
+cache and need no API key. `score` calls the API and needs OPENAI_API_KEY.
+
+`analyse` writes 7 files to `--out`. `gold` writes 6. Together they regenerate
+every file in `results/`.
 """
 
 from __future__ import annotations
@@ -186,6 +190,63 @@ def cmd_validate_score(args) -> int:
     return 0
 
 
+def cmd_gold(args) -> int:
+    """Regenerate every reference-label output in `results/`.
+
+    `analyse` covers the probe outputs. This command covers the 6 that depend
+    on `data/gold/labels/`: the wide and long label frames, labeller
+    consistency, the humour breakdown, synonym-pair agreement, and the
+    validation report.
+
+    The validation report here carries 4 columns that `validate-score` does
+    not write: `gold`, `judge`, `ratio` and `ci_disjoint`. Those come from
+    `gold.prevalence_comparison`, which needs the wide reference frame.
+    """
+    from .traits import DEFAULT_TAXONOMY
+    from . import analysis as an
+    from . import gold as gd
+    from .validation import evaluate_against_gold
+
+    traits = list(DEFAULT_TAXONOMY)
+    documents, scorer = _load(args, traits)
+    judgments = [
+        hit
+        for doc in documents
+        for trait in traits
+        if (hit := scorer.lookup(doc.id, trait, allow_legacy=not args.no_legacy)) is not None
+    ]
+    frame = an.build_frame(documents, judgments, traits)
+    complete = frame[frame["complete"]].reset_index(drop=True)
+    if complete.empty:
+        print("no fully scored documents: run `score` first")
+        return 1
+
+    reference = gd.load_gold(args.labels)
+    long = gd.to_long(reference)
+    report = evaluate_against_gold(long, complete, list(gd.GOLD_TRAITS.values()))
+    comparison = gd.prevalence_comparison(reference, complete)
+
+    tables = {
+        "gold_wide.csv": reference,
+        "gold_labels.csv": long,
+        "gold_consistency.csv": gd.labeller_consistency(reference),
+        "gold_humour.csv": gd.humour_breakdown(reference),
+        "gold_pairs.csv": gd.pair_agreement(reference, complete),
+        "validation.csv": report.merge(
+            comparison[["trait", "gold", "judge", "ratio", "ci_disjoint"]], on="trait"
+        ),
+    }
+
+    os.makedirs(args.out, exist_ok=True)
+    for name, table in tables.items():
+        path = os.path.join(args.out, name)
+        table.to_csv(path, index=False)
+        print(f"wrote {path}  ({len(table)} rows, {len(table.columns)} columns)")
+    print(f"\n{len(reference):,} reference posts over "
+          f"{reference['batch'].nunique()} batches")
+    return 0
+
+
 def cmd_compare(args) -> int:
     from .traits import DEFAULT_TAXONOMY
     from .corpus import load_jsonl
@@ -249,6 +310,10 @@ def build_parser() -> argparse.ArgumentParser:
     score_val = sub.add_parser("validate-score")
     score_val.add_argument("--annotations", default="results/annotation.csv")
     score_val.set_defaults(func=cmd_validate_score)
+
+    gold_cmd = sub.add_parser("gold")
+    gold_cmd.add_argument("--labels", default="data/gold/labels")
+    gold_cmd.set_defaults(func=cmd_gold)
 
     compare = sub.add_parser("compare")
     compare.add_argument("--baseline", required=True)

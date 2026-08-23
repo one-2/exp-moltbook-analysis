@@ -22,7 +22,7 @@ stored result file.
 | `data/data_2026_01_31_1847_aest/` | the scrape |
 | `data/gold/` | reference labels and the rubric given to the labellers |
 | `cache/trait_scores/` | `gpt-4.1-nano` judgments from the January 2026 run |
-| `results/` | CSV output of the command line interface; regenerable |
+| `results/` | CSV output of the command line interface; every file is regenerable |
 | `tests/` | 15 tests over the cache keys and the statistics |
 
 ## Data
@@ -60,11 +60,14 @@ python3 -m pytest tests/ -q
 jupyter nbconvert --to notebook --execute --inplace \
     source/alignment_relevant_speech.ipynb
 
-# Command line interface, writing CSVs to results/
+# Command line interface. These two rebuild every file in results/.
 PYTHONPATH=source python3 -m alignment_speech --scored-only --out results analyse
-PYTHONPATH=source python3 -m alignment_speech --scored-only validate-score \
-    --annotations results/gold_labels.csv
+PYTHONPATH=source python3 -m alignment_speech --scored-only --out results gold
 ```
+
+`analyse` writes 7 files. `gold` writes 6. **Measured:** deleting `results/` and
+running both rebuilds all 13 files. Every value matches the committed copy to
+within 5.6e-15, and every text column is identical.
 
 Scoring new documents calls the OpenAI API and needs `OPENAI_API_KEY`.
 
